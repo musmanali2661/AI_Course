@@ -21,9 +21,6 @@ import util
 from game import Directions
 from typing import List
 
-from search.util import Stack
-
-
 class SearchProblem:
     """
     This class outlines the structure of a search problem, but doesn't implement
@@ -92,25 +89,8 @@ def depthFirstSearch(problem: SearchProblem) -> List[Directions]:
     print("Is the start a goal?", problem.isGoalState(problem.getStartState()))
     print("Start's successors:", problem.getSuccessors(problem.getStartState()))
     """
-
-    print("Start:", problem.getStartState())
-    print("Is the start a goal?", problem.isGoalState(problem.getStartState()))
-    print("Start's successors:", problem.getSuccessors(problem.getStartState()))
-
-    stack = Stack()
-
-    s = Directions.SOUTH
-    w = Directions.WEST
-    e = Directions.EAST
-    n = Directions.NORTH
-
-
-
-
-
-
-    return [s, s, w, s, w, w, s, w]
-    #util.raiseNotDefined()
+    "*** YOUR CODE HERE ***"
+    util.raiseNotDefined()
 
 def breadthFirstSearch(problem: SearchProblem) -> List[Directions]:
     """Search the shallowest nodes in the search tree first."""
