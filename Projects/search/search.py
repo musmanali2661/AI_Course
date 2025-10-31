@@ -166,6 +166,7 @@ def breadthFirstSearch(problem: SearchProblem) -> List[Directions]:
 
         # Graph Search Check: Skip if we've already expanded this state
         if current_state in expanded_states:
+            print("i am stuck here in continue")
             continue
 
         # Mark the current state as expanded
@@ -182,6 +183,7 @@ def breadthFirstSearch(problem: SearchProblem) -> List[Directions]:
             if successor_state not in expanded_states:
                 # Push the successor state and the NEW path onto the stack
                 dfs_stack.push((successor_state, new_path))
+            print("i am stuck here in for loop")
 
     # If the stack is empty and the goal hasn't been found
     return []

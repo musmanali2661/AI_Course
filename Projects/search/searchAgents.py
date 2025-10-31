@@ -303,6 +303,7 @@ class CornersProblem(search.SearchProblem):
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
+        print('isGoalState not implemented')
         util.raiseNotDefined()
 
     def getSuccessors(self, state: Any):
@@ -453,6 +454,8 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
+
+
     return 0
 
 
