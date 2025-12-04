@@ -190,8 +190,54 @@ def breadthFirstSearch(problem: SearchProblem) -> List[Directions]:
 
 def uniformCostSearch(problem: SearchProblem) -> List[Directions]:
     """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    """Search the shallowest nodes in the search tree first."""
+    # --- 1. Initialization ---
+
+    # Use a set for O(1) average time complexity lookup of visited states.
+    # Stores states that have already been expanded (successors generated).
+    expanded_states = set()
+
+    # The stack will store tuples: (state, path_to_state_as_list_of_directions)
+    dfs_stack = util.PriorityQueue()
+
+    # Initial state and an empty path
+    start_state = problem.getStartState()
+    dfs_stack.push((start_state, []),util.manhattanDistance(start_state,))
+
+    # --- 2. Main Search Loop ---
+
+    while not dfs_stack.isEmpty():
+
+        # Pop the current state and its accumulated path
+        current_state, path_so_far = dfs_stack.pop()
+
+        # Check for Goal (should be done immediately upon popping a node)
+        if problem.isGoalState(current_state):
+            return path_so_far
+
+        # Graph Search Check: Skip if we've already expanded this state
+        if current_state in expanded_states:
+            print("i am stuck here in continue")
+            continue
+
+        # Mark the current state as expanded
+        expanded_states.add(current_state)
+        # nodes_expanded += 1 # Uncomment if you need to track this metric
+
+        # Get successors: (successor_state, direction, cost)
+        for successor_state, direction, _ in problem.getSuccessors(current_state):
+
+            # 1. Create a NEW path by copying the old path
+            new_path = path_so_far + [direction]  # Using list concatenation to create a new list
+
+            # 2. Check visited status of the successor state (Optimization)
+            if successor_state not in expanded_states:
+                # Push the successor state and the NEW path onto the stack
+                dfs_stack.push((successor_state, new_path))
+            print("i am stuck here in for loop")
+
+    # If the stack is empty and the goal hasn't been found
+    return []
 
 def nullHeuristic(state, problem=None) -> float:
     """
