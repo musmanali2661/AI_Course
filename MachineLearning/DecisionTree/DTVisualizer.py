@@ -27,34 +27,27 @@ def load_and_preprocess_data(file_path='drug200.csv'):
         messagebox.showerror("Data Error", f"An error occurred while loading data: {e}")
         return None, None, None, None, None
 
-    # Assuming the column names are consistent: Age,Sex,BP,Cholesterol,Na_to_K,Drug
     if 'Drug' not in data.columns:
-        messagebox.showerror("Data Format Error", "The CSV file must contain a 'Drug' column as the target variable.")
+        messagebox.showerror("Data Format Error", "The CSV file must contain a 'Drug' column.")
         return None, None, None, None, None
 
-    # Separate features (X) and target (y)
     X_raw = data.drop('Drug', axis=1)
     y_raw = data['Drug']
 
-    # Identify categorical columns (Sex, BP, Cholesterol)
-    # Filter for columns that actually exist in the file
     all_cols = X_raw.columns.tolist()
     categorical_cols = [col for col in ['Sex', 'BP', 'Cholesterol'] if col in all_cols]
 
     X_processed = X_raw.copy()
 
-    # Use LabelEncoder to convert categorical features to integers
     le_features = {}
     for col in categorical_cols:
         le = LabelEncoder()
         X_processed[col] = le.fit_transform(X_processed[col])
         le_features[col] = le
 
-    # Convert target (Drug) to numerical
     le_y = LabelEncoder()
     y = le_y.fit_transform(y_raw)
 
-    # Prepare feature and class names for the plot
     feature_names = X_processed.columns.tolist()
     class_names = le_y.classes_.tolist()
 
@@ -64,26 +57,24 @@ def load_and_preprocess_data(file_path='drug200.csv'):
 # --- 2. Decision Tree Visualization Application Class ---
 
 class DecisionTreeVisualizer:
-    # Max Depth steps for demonstration
-    # We will step through depths 1 to 10
     MAX_DEPTH_STEPS = list(range(1, 11))
     current_step_index = 0
 
     def __init__(self, master):
         self.master = master
-        master.title("Decision Tree Step-by-Step Growth Demo (drug200.csv)")
+        master.title("Decision Tree Step-by-Step Growth Demo")
+        master.geometry("1200x800")
 
         # Configure the main window style
         style = ttk.Style()
         style.configure('TFrame', background='#f0f0f0')
-        style.configure('TButton', padding=6, relief="flat", background='#007ACC', foreground='white')
-        style.map('TButton', background=[('active', '#005f99')])
+        style.configure('TButton', padding=6)
+        style.configure('Header.TLabel', font=("Arial", 12, "bold"), background='#f0f0f0')
 
         # --- Data Initialization ---
         self.X, self.y, self.feature_names, self.class_names, self.le_features = load_and_preprocess_data()
 
         if self.X is None:
-            # If data loading failed, stop initialization
             master.destroy()
             return
 
@@ -91,76 +82,92 @@ class DecisionTreeVisualizer:
         self.current_depth = tk.IntVar(value=self.MAX_DEPTH_STEPS[self.current_step_index])
         self.step_label_text = tk.StringVar()
 
-        # --- Matplotlib Figure Setup ---
-        self.fig, self.ax = plt.subplots(figsize=(10, 7))
+        # --- Main Layout Container ---
+        # Using a horizontal layout: [ Tree View (Left) | Controls (Right) ]
+        container = ttk.Frame(master)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        # Left Side: Tree Plot
+        self.plot_frame = ttk.Frame(container, padding="10")
+        self.plot_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.fig, self.ax = plt.subplots(figsize=(8, 7))
         self.fig.patch.set_facecolor('#f0f0f0')
-        self.ax.set_title("Decision Tree Structure")
         self.ax.axis('off')
 
-        # --- Tkinter Canvas Setup ---
-        main_frame = ttk.Frame(master, padding="10 10 10 10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.canvas_widget = FigureCanvasTkAgg(self.fig, master=main_frame)
-        self.canvas_widget.draw()
+        self.canvas_widget = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         self.canvas_widget.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-        # --- Control Panel (Frame) ---
-        control_frame = ttk.LabelFrame(main_frame, text="Max Depth Control", padding="15")
-        control_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+        # Add Matplotlib Toolbar below plot
+        self.toolbar_frame = ttk.Frame(self.plot_frame)
+        self.toolbar_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        toolbar = NavigationToolbar2Tk(self.canvas_widget, self.toolbar_frame)
+        toolbar.update()
 
-        # --- Step Control ---
-        step_control_frame = ttk.Frame(control_frame)
-        step_control_frame.pack(fill=tk.X)
+        # Right Side: Control Pane
+        self.side_pane = ttk.Frame(container, width=300, padding="20", relief="sunken")
+        self.side_pane.pack(side=tk.RIGHT, fill=tk.Y)
+        self.side_pane.pack_propagate(False)  # Maintain fixed width
 
-        ttk.Label(step_control_frame, textvariable=self.step_label_text, font=("Arial", 10, "bold")).pack(side=tk.LEFT,
-                                                                                                          padx=10)
+        ttk.Label(self.side_pane, text="Navigation", style='Header.TLabel').pack(anchor='w', pady=(0, 10))
 
-        self.next_button = ttk.Button(step_control_frame, text="Next Split \u279D", command=self.next_step)
-        self.next_button.pack(side=tk.RIGHT, padx=5)
+        # Step Indicator
+        ttk.Label(self.side_pane, textvariable=self.step_label_text, font=("Arial", 10, "bold")).pack(anchor='w',
+                                                                                                      pady=5)
 
-        self.reset_button = ttk.Button(step_control_frame, text="\u21BA Reset", command=self.reset_demo)
-        self.reset_button.pack(side=tk.RIGHT, padx=5)
+        # Progress bar for visual depth feedback
+        self.progress = ttk.Progressbar(self.side_pane, orient=tk.HORIZONTAL, length=260, mode='determinate',
+                                        maximum=10)
+        self.progress.pack(pady=10)
 
-        # --- Info Label (Expanded) ---
-        self.info_label = ttk.Label(control_frame, text="", wraplength=900, foreground='#333333', font=("Arial", 9))
-        self.info_label.pack(fill=tk.X, pady=(10, 5))
+        # Buttons
+        btn_frame = ttk.Frame(self.side_pane)
+        btn_frame.pack(fill=tk.X, pady=10)
 
-        # --- Initial Model Training and Drawing ---
+        self.next_button = ttk.Button(btn_frame, text="Next Step \u279D", command=self.next_step)
+        self.next_button.pack(side=tk.TOP, fill=tk.X, pady=5)
+
+        self.reset_button = ttk.Button(btn_frame, text="\u21BA Reset Tree", command=self.reset_demo)
+        self.reset_button.pack(side=tk.TOP, fill=tk.X, pady=5)
+
+        ttk.Separator(self.side_pane, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=15)
+
+        ttk.Label(self.side_pane, text="Insight", style='Header.TLabel').pack(anchor='w', pady=(0, 10))
+
+        # Description
+        self.info_label = ttk.Label(self.side_pane, text="", wraplength=260, foreground='#333333', font=("Arial", 10))
+        self.info_label.pack(anchor='w', fill=tk.BOTH, expand=True)
+
+        # --- Initial Drawing ---
         self.update_visualization()
 
     def get_description(self, depth):
-        """Returns a description based on the current tree depth."""
         if depth == 1:
-            return "Step 1: The model finds the single best feature split (e.g., Na_to_K > 14.8) to separate the data into the purest possible groups (nodes). This is the simplest model."
+            return "The algorithm selects the single best feature (Na_to_K) to create a 'stump'. This split provides the highest Information Gain."
         elif depth <= 3:
-            return f"Step {depth}: The tree adds a few more splits (nodes) on secondary features (like BP or Age) to better isolate certain drug types. The model is still very interpretable."
+            return f"The tree begins to branch into secondary levels. It is now looking at factors like 'BP' or 'Age' to further refine its drug classifications."
         elif depth <= 5:
-            return f"Step {depth}: The tree is growing, creating more detailed branches. Notice how the 'value' array in the leaf nodes is becoming more concentrated towards one drug, indicating high purity."
+            return f"Depth {depth}: Many nodes are now 'pure' (containing only one class of drug). The logic is becoming more sophisticated."
         else:
-            return f"Step {depth}: The tree is highly complex, fitting the training data very closely. Every split is used to classify the individual data points. This high detail increases the risk of overfitting."
+            return f"At Depth {depth}, the tree is extremely specific. While accurate for this data, it may struggle with new, unseen patients (overfitting)."
 
     def update_visualization(self):
-        """Trains the Decision Tree model and updates the plot based on the current max_depth."""
-
         depth = self.current_depth.get()
         total_steps = len(self.MAX_DEPTH_STEPS)
         current_step = self.current_step_index + 1
 
-        # --- Update Labels ---
-        self.step_label_text.set(f"Step {current_step}/{total_steps} | Max Depth = {depth}")
+        self.step_label_text.set(f"Step {current_step} of {total_steps} (Depth: {depth})")
         self.info_label.config(text=self.get_description(depth))
+        self.progress['value'] = current_step
 
-        # --- 3. Train Decision Tree Model ---
-        # The best model for this data is often found around depth 5-6
+        # Train Model
         clf = DecisionTreeClassifier(max_depth=depth, random_state=42, criterion='entropy')
         clf.fit(self.X, self.y)
 
-        # --- 4. Draw Plot ---
+        # Clear and Draw
         self.ax.clear()
         self.ax.axis('off')
 
-        # Plot the tree structure
         plot_tree(
             clf,
             ax=self.ax,
@@ -168,45 +175,35 @@ class DecisionTreeVisualizer:
             class_names=self.class_names,
             filled=True,
             rounded=True,
-            precision=2,  # Show split values with 2 decimal places
+            precision=2,
             proportion=False,
-            fontsize=8,  # Changed from 7.5 to 8 to fix the InvalidParameterError
-            max_depth=depth  # Plot only up to the current depth
+            fontsize=8,
+            max_depth=depth
         )
 
-        # Ensure plot fits the canvas
+        self.ax.set_title(f"Decision Tree Path (Max Depth = {depth})", fontsize=12, pad=20)
         self.fig.tight_layout()
-
-        # Final plot settings
-        self.ax.set_title(f"Decision Tree Growth (Max Depth = {depth})", fontsize=12)
-
-        # Redraw the canvas
         self.canvas_widget.draw()
 
-        # Disable/Enable Next Step button
+        # Button State
         if self.current_step_index >= total_steps - 1:
             self.next_button.config(state=tk.DISABLED)
         else:
             self.next_button.config(state=tk.NORMAL)
 
     def next_step(self):
-        """Advances to the next predefined Max Depth value."""
         if self.current_step_index < len(self.MAX_DEPTH_STEPS) - 1:
             self.current_step_index += 1
             self.current_depth.set(self.MAX_DEPTH_STEPS[self.current_step_index])
             self.update_visualization()
 
     def reset_demo(self):
-        """Re sets the visualization to the first step (Depth 1)."""
         self.current_step_index = 0
         self.current_depth.set(self.MAX_DEPTH_STEPS[self.current_step_index])
         self.update_visualization()
 
 
-# --- 5. Main Execution ---
 if __name__ == "__main__":
-    # Tkinter requires the root window to be created first
     root = tk.Tk()
     app = DecisionTreeVisualizer(root)
-    # Start the Tkinter event loop
     root.mainloop()
